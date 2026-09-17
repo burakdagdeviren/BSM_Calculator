@@ -31,6 +31,20 @@ The formulas below are a proposed estimation model derived from these principles
 
 ## 3. Define the counting boundary
 
+### 3.1 Operational validation case supplied after the initial study
+
+The supplied TAV BRS usage report covers six SunExpress stations from Aug 2024 through Apr 2026. It reports 31,370 flights, 4,131,434 network-unique bags and 5,059,985 BSMs. These totals give:
+
+`m_network_unique = 5,059,985 / 4,131,434 = 1.2247527 received BSMs per unique bag`
+
+The six station cards reconcile exactly to 31,370 flights and 5,059,985 BSMs, but their bag figures sum to 4,192,232. This is 60,798 (1.47%) above the network-unique headline. Using that workload denominator gives:
+
+`m_station_movement = 5,059,985 / 4,192,232 = 1.2069907 received BSMs per station bag movement`
+
+The report therefore validates the calculator's ratio-of-totals method and demonstrates why the denominator must follow the chosen processing boundary. The base calculator rate now uses 1.2247527 for a network-unique bag scope and offers 1.2069907 for summed station workload. The report's stated 18% transfer-message share is already included in total BSM volume and must not be added as a second multiplier.
+
+The report has no passenger total. It cannot support a bags-per-PAX calibration, and the calculator retains 0.90 only as an editable planning assumption. The year-card bag figures also exceed the headline by 12 bags, so the headline totals remain authoritative for the published overall ratio.
+
 Default boundary: one airport's selected BRS, incoming BSM envelopes before duplicate suppression, covering departing baggage. Other message types and outbound deliveries are separate workloads.
 
 Maintain these distinct quantities:

@@ -4,9 +4,25 @@ export const BASIS = {
   flight: { label: 'PAX per flight', short: 'Flight PAX', unit: 'per flight', sliderMin: 10, sliderMax: 650, sliderStep: 1 },
 };
 
+export const OBSERVED_REFERENCE = {
+  label: 'Observed multi-station reference',
+  period: 'Aug 2024–Apr 2026',
+  stations: 6,
+  flights: 31_370,
+  uniqueBags: 4_131_434,
+  stationBagMovements: 4_192_232,
+  messages: 5_059_985,
+  transferMessageShare: 0.18,
+};
+
+OBSERVED_REFERENCE.messagesPerUniqueBag = OBSERVED_REFERENCE.messages / OBSERVED_REFERENCE.uniqueBags;
+OBSERVED_REFERENCE.messagesPerStationBagMovement = OBSERVED_REFERENCE.messages / OBSERVED_REFERENCE.stationBagMovements;
+OBSERVED_REFERENCE.bagsPerFlight = OBSERVED_REFERENCE.uniqueBags / OBSERVED_REFERENCE.flights;
+OBSERVED_REFERENCE.messagesPerFlight = OBSERVED_REFERENCE.messages / OBSERVED_REFERENCE.flights;
+
 export const SCENARIOS = {
   low: { label: 'Low', bagsPerPax: 0.6, messagesPerBag: 1.05 },
-  base: { label: 'Base', bagsPerPax: 0.9, messagesPerBag: 1.3 },
+  base: { label: 'Base', bagsPerPax: 0.9, messagesPerBag: OBSERVED_REFERENCE.messagesPerUniqueBag },
   high: { label: 'High', bagsPerPax: 1.2, messagesPerBag: 1.8 },
 };
 

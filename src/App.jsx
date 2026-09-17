@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   BASIS,
+  OBSERVED_REFERENCE,
   SCENARIOS,
   calculateForecast,
   calculatePeak,
@@ -10,7 +11,7 @@ import {
 } from './calculations.js';
 
 const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const decimalFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+const decimalFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
 
 const defaults = {
   basis: 'departing',
@@ -24,7 +25,7 @@ const defaults = {
   bagsPerCheckingPax: 1.2,
   gateBagIncrement: 0,
   messageMethod: 'direct',
-  messagesPerBag: 1.3,
+  messagesPerBag: SCENARIOS.base.messagesPerBag,
   bagsPerInitialEnvelope: 1,
   changeRate: 0.2,
   deleteRate: 0.02,
@@ -147,6 +148,37 @@ function CompareTable({ state, bagRate, messageRate }) {
   );
 }
 
+function ObservedReference({ onApplyNetwork, onApplyStation }) {
+  const bagOverlap = OBSERVED_REFERENCE.stationBagMovements - OBSERVED_REFERENCE.uniqueBags;
+  return (
+    <section className="reference-panel" aria-labelledby="reference-title">
+      <div className="reference-copy">
+        <span className="reference-kicker">Operational calibration · {OBSERVED_REFERENCE.period}</span>
+        <h2 id="reference-title">Real BSM activity now anchors the base message rate</h2>
+        <p>The supplied six-station report records {formatter.format(OBSERVED_REFERENCE.messages)} BSMs, {formatter.format(OBSERVED_REFERENCE.uniqueBags)} network-unique bags and {formatter.format(OBSERVED_REFERENCE.flights)} flights. It contains no passenger total, so bags per PAX remains an editable assumption.</p>
+      </div>
+      <div className="reference-rates">
+        <div className="reference-rate">
+          <span>Network-unique bags</span>
+          <strong>{OBSERVED_REFERENCE.messagesPerUniqueBag.toFixed(3)}</strong>
+          <small>BSMs per unique bag</small>
+          <button type="button" onClick={onApplyNetwork}>Apply network rate</button>
+        </div>
+        <div className="reference-rate station">
+          <span>Summed station workload</span>
+          <strong>{OBSERVED_REFERENCE.messagesPerStationBagMovement.toFixed(3)}</strong>
+          <small>BSMs per station bag movement</small>
+          <button type="button" onClick={onApplyStation}>Apply station rate</button>
+        </div>
+      </div>
+      <div className="reference-note">
+        <strong>Keep scopes separate.</strong>
+        <span>The station cards total {formatter.format(OBSERVED_REFERENCE.stationBagMovements)} bag movements—{formatter.format(bagOverlap)} more than the network-unique total. The reported {Math.round(OBSERVED_REFERENCE.transferMessageShare * 100)}% transfer share is already inside BSM volume and is not added again.</span>
+      </div>
+    </section>
+  );
+}
+
 function MethodologyModal({ onClose }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -157,6 +189,8 @@ function MethodologyModal({ onClose }) {
         <div className="formula">BSMs = PAX × departure share × BRS coverage × bags/PAX × BSMs/bag</div>
         <h3>Input boundaries</h3>
         <p>Airport PAX can be converted to departing PAX. Departing and per-flight inputs already represent departing passengers. Compare mode shows alternative scopes; it does not sum them.</p>
+        <h3>Observed calibration</h3>
+        <p>The base BSM rate is calibrated to the supplied Aug 2024–Apr 2026 report: 5,059,985 BSMs divided by 4,131,434 network-unique bags equals 1.22475 BSMs per bag. For summed station processing, 5,059,985 divided by 4,192,232 station bag movements equals 1.20699. The 60,798-bag difference shows why unique bags and station movements must remain separate. The reported 18% transfer share is already included in BSM volume and is not added again. The report has no passenger total, so it cannot calibrate bags per PAX.</p>
         <h3>Advanced decomposition</h3>
         <p>Bags/PAX can be calculated from checked-bag participation × bags among checking passengers, plus any explicit gate-bag increment. BSMs/bag can be decomposed into grouped initial envelopes, CHG, DEL, reissues and repeat delivery.</p>
         <h3>Peak planning</h3>
@@ -184,6 +218,12 @@ export default function App() {
     const preset = SCENARIOS[scenario];
     set({ scenario, bagMethod: 'direct', messageMethod: 'direct', bagsPerPax: preset.bagsPerPax, messagesPerBag: preset.messagesPerBag });
   };
+
+  const applyObservedRate = (scope) => set({
+    scenario: 'custom',
+    messageMethod: 'direct',
+    messagesPerBag: scope === 'station' ? OBSERVED_REFERENCE.messagesPerStationBagMovement : OBSERVED_REFERENCE.messagesPerUniqueBag,
+  });
 
   return (
     <div className="app-shell">
@@ -217,7 +257,7 @@ export default function App() {
             <SliderControl label="Departure share" info="Used only to convert arrivals-plus-departures airport traffic into departing passengers." value={state.departureShare * 100} min={10} max={100} step={1} unit="%" onChange={(value) => set({ departureShare: value / 100 })} displayValue={(value) => `${value}%`} />
             <SliderControl label="BRS coverage" info="Share of departing passengers whose baggage traffic is served by this BRS boundary." value={state.coverage * 100} min={0} max={100} step={1} unit="%" onChange={(value) => set({ coverage: value / 100 })} displayValue={(value) => `${value}%`} />
             <SliderControl label="Bags per PAX" info="Average checked bags per served passenger, including passengers with no checked bag." value={Number(bagRate.toFixed(3))} min={0} max={3} step={0.01} unit="bags" onChange={(value) => set({ bagMethod: 'direct', bagsPerPax: value, scenario: 'custom' })} displayValue={(value) => value.toFixed(1)} />
-            <SliderControl label="BSMs per bag" info="Average received BSM envelopes per in-scope bag at the selected interface boundary." value={Number(messageRate.toFixed(3))} min={0} max={5} step={0.01} unit="messages" onChange={(value) => set({ messageMethod: 'direct', messagesPerBag: value, scenario: 'custom' })} displayValue={(value) => value.toFixed(1)} />
+            <SliderControl label="BSMs per bag" info="Average received BSM envelopes per in-scope bag at the selected interface boundary." value={Number(messageRate.toFixed(3))} min={0} max={5} step={0.001} unit="messages" onChange={(value) => set({ messageMethod: 'direct', messagesPerBag: value, scenario: 'custom' })} displayValue={(value) => value.toFixed(1)} />
           </div>
 
           <div className="results-panel" aria-live="polite">
@@ -229,6 +269,8 @@ export default function App() {
             </>}
           </div>
         </section>
+
+        <ObservedReference onApplyNetwork={() => applyObservedRate('network')} onApplyStation={() => applyObservedRate('station')} />
 
         <section className={`advanced ${advanced ? 'open' : ''}`}>
           <button className="advanced-heading" onClick={() => setAdvanced((value) => !value)} aria-expanded={advanced}><Icon><path d={advanced ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} /></Icon><strong>Advanced settings</strong><span>Refine baggage behaviour, message activity and peak capacity assumptions.</span></button>
@@ -264,7 +306,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer><span><Info text="Local calibration is recommended." /> Estimates depend on local airline mix, baggage behaviour and interface routing.</span><span>BSM Calculator v1.0 · Airport technology planning tool</span></footer>
+      <footer><span><Info text="Local calibration is recommended." /> Estimates depend on local airline mix, baggage behaviour and interface routing.</span><span>BSM Calculator v1.1 · Operationally calibrated</span></footer>
       {methodology && <MethodologyModal onClose={() => setMethodology(false)} />}
     </div>
   );

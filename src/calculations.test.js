@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateForecast, calculatePeak, effectiveBagsPerPax, effectiveMessagesPerBag } from './calculations.js';
+import { OBSERVED_REFERENCE, SCENARIOS, calculateForecast, calculatePeak, effectiveBagsPerPax, effectiveMessagesPerBag } from './calculations.js';
 
 test('study worked example returns 900k bags and 1.17m messages', () => {
   const result = calculateForecast({ basis: 'departing', passengerVolume: 1_000_000, departureShare: 0.5, coverage: 1, bagsPerPax: 0.9, messagesPerBag: 1.3 });
@@ -27,4 +27,15 @@ test('peak calculation includes burst, backlog recovery, and headroom', () => {
   const peak = calculatePeak({ annualMessages: 1_170_000, operatingDays: 365, busyDayFactor: 1.5, peakHourShare: 0.12, burstFactor: 1.2, backlogMessages: 10_000, recoveryMinutes: 30, headroom: 0.25 });
   assert.ok(peak.designPerSecond > peak.peakPerSecond);
   assert.ok(peak.peakHour > 0);
+});
+
+test('observed network rate reproduces the supplied operational BSM total', () => {
+  assert.ok(Math.abs(OBSERVED_REFERENCE.messagesPerUniqueBag - 1.2247527129805293) < 1e-12);
+  assert.equal(OBSERVED_REFERENCE.uniqueBags * OBSERVED_REFERENCE.messagesPerUniqueBag, OBSERVED_REFERENCE.messages);
+  assert.equal(SCENARIOS.base.messagesPerBag, OBSERVED_REFERENCE.messagesPerUniqueBag);
+});
+
+test('station workload reference keeps bag movements distinct from network-unique bags', () => {
+  assert.equal(OBSERVED_REFERENCE.stationBagMovements - OBSERVED_REFERENCE.uniqueBags, 60_798);
+  assert.ok(Math.abs(OBSERVED_REFERENCE.messagesPerStationBagMovement - 1.2069906913548678) < 1e-12);
 });
